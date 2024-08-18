@@ -9,10 +9,6 @@ const provider = new ethers.providers.JsonRpcProvider(
   "https://rpc.pulsechain.com"
 );
 
-const sepoliaProvider = new ethers.providers.JsonRpcProvider(
-  "https://ethereum-sepolia-rpc.publicnode.com"
-);
-
 // Load the ABI JSON file
 const flexABI = JSON.parse(fs.readFileSync("abi/SignumFlexABI.json", "utf8"));
 const autopayABI = JSON.parse(fs.readFileSync("abi/AutopayABI.json", "utf8"));
@@ -46,7 +42,10 @@ function saveNewReportEventData(eventData) {
     data = JSON.parse(fileContent);
   }
 
-  data.push(eventData);
+  // Check for duplicates
+  if (!data.find((e) => e.txnHash === eventData.txnHash)) {
+    data.push(eventData);
+  }
 
   if (data.length > 1000) {
     data.splice(0, data.length - 1000);
@@ -63,7 +62,10 @@ function saveTipAddedEventData(eventData) {
     data = JSON.parse(fileContent);
   }
 
-  data.push(eventData);
+  // Check for duplicates
+  if (!data.find((e) => e.txnHash === eventData.txnHash)) {
+    data.push(eventData);
+  }
 
   if (data.length > 1000) {
     data.splice(0, data.length - 1000);
@@ -86,36 +88,39 @@ async function fetchHistoricalEvents(fromBlock, toBlock) {
 
   events.forEach((event) => {
     const eventData = {
-      _queryId: event.args._queryId,
-      _time: event.args._time.toString(),
-      _value: event.args._value,
-      _nonce: event.args._nonce.toString(),
-      _queryData: event.args._queryData,
-      _reporter: event.args._reporter,
-      raw: event, // Store the full raw event data
-      timestamp: new Date().toISOString(),
-    };
+    id: event.transactionHash,
+    _queryId: event.args._queryId,
+    _time: Number(event.args._time),
+    _value: event.args._value,
+    _nonce: Number(event.args._nonce),
+    _queryData: event.args._queryData,
+    _reporter: event.args._reporter,
+    _blockNumber: event.blockNumber,
+    txnHash: event.transactionHash,
+    __typename: "NewReportEntity"
+  };
 
     saveNewReportEventData(eventData);
   });
 
   const tipEvents = await autopayContract.queryFilter(
     "TipAdded",
-    5240272,
-    5285029
+    fromBlock,
+    toBlock
   );
 
   tipEvents.forEach((event) => {
     const eventData = {
-      _queryId: event.args._queryId,
-      _amount: event.args._amount.toString(),
-      _queryData: event.args._queryData,
-      _tipper: event.args._tipper,
-      _startTime: Math.floor(Date.now() / 1000),
-      raw: event, // Store the full raw event data
-      txnHash: event.transactionHash,
-      __typename: "TipAddedEntity",
-    };
+    id: event.transactionHash,
+    _queryId: event.args._queryId,
+    _amount: Number(event.args._amount),
+    _queryData: event.args._queryData,
+    _tipper: event.args._tipper,
+    _startTime: Math.floor(Date.now() / 1000),
+    txnHash: event.transactionHash,
+    __typename: "TipAddedEntity"
+  };
+
 
     saveTipAddedEventData(eventData);
   });
@@ -133,7 +138,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.get("/events", (req, res) => {
+app.get("/new-report", (req, res) => {
   if (fs.existsSync(newReportDataFilePath)) {
     const fileContent = fs.readFileSync(newReportDataFilePath);
     res.json(JSON.parse(fileContent));
@@ -142,7 +147,17 @@ app.get("/events", (req, res) => {
   }
 });
 
+app.get("/tip-added", (req, res) => {
+  if (fs.existsSync(tipAddedDataFilePath)) {
+    const fileContent = fs.readFileSync(tipAddedDataFilePath);
+    res.json(JSON.parse(fileContent));
+  } else {
+    res.json([]);
+  }
+});
+
 app.post("/webhook/tip-added", (req, res) => {
+  try {
   const { _queryData, _tipper } = web3.eth.abi.decodeParameters(
     ["bytes _queryData", "address _tipper"],
     req.body.logs[0].data
@@ -164,9 +179,14 @@ app.post("/webhook/tip-added", (req, res) => {
   saveTipAddedEventData(event);
 
   res.json({ event });
+  } catch (e) {
+  console.log(e);
+  res.json({});
+}
 });
 
 app.post("/webhook/new-report", (req, res) => {
+  try {
   const { _value, _nonce, _queryData } = web3.eth.abi.decodeParameters(
     ["bytes _value", "uint256 _nonce", "bytes _queryData"],
     req.body.logs[0].data
@@ -190,6 +210,10 @@ app.post("/webhook/new-report", (req, res) => {
   saveNewReportEventData(event);
 
   res.json({ event });
+} catch (e) {
+  console.log(e);
+  res.json({});
+}
 });
 
 const PORT = process.env.PORT || 3001;
