@@ -92,10 +92,10 @@ async function fetchHistoricalEvents(fromBlock, toBlock) {
       _queryId: event.args._queryId,
       _time: Number(event.args._time),
       _value: event.args._value,
+      _blockNumber: event.blockNumber,
       _nonce: Number(event.args._nonce),
       _queryData: event.args._queryData,
       _reporter: event.args._reporter,
-      _blockNumber: event.blockNumber,
       txnHash: event.transactionHash,
       __typename: "NewReportEntity",
     };
