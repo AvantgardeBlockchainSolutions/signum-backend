@@ -88,17 +88,17 @@ async function fetchHistoricalEvents(fromBlock, toBlock) {
 
   events.forEach((event) => {
     const eventData = {
-    id: event.transactionHash,
-    _queryId: event.args._queryId,
-    _time: Number(event.args._time),
-    _value: event.args._value,
-    _nonce: Number(event.args._nonce),
-    _queryData: event.args._queryData,
-    _reporter: event.args._reporter,
-    _blockNumber: event.blockNumber,
-    txnHash: event.transactionHash,
-    __typename: "NewReportEntity"
-  };
+      id: event.transactionHash,
+      _queryId: event.args._queryId,
+      _time: Number(event.args._time),
+      _value: event.args._value,
+      _nonce: Number(event.args._nonce),
+      _queryData: event.args._queryData,
+      _reporter: event.args._reporter,
+      _blockNumber: event.blockNumber,
+      txnHash: event.transactionHash,
+      __typename: "NewReportEntity",
+    };
 
     saveNewReportEventData(eventData);
   });
@@ -111,16 +111,15 @@ async function fetchHistoricalEvents(fromBlock, toBlock) {
 
   tipEvents.forEach((event) => {
     const eventData = {
-    id: event.transactionHash,
-    _queryId: event.args._queryId,
-    _amount: Number(event.args._amount),
-    _queryData: event.args._queryData,
-    _tipper: event.args._tipper,
-    _startTime: Math.floor(Date.now() / 1000),
-    txnHash: event.transactionHash,
-    __typename: "TipAddedEntity"
-  };
-
+      id: event.transactionHash,
+      _queryId: event.args._queryId,
+      _amount: Number(event.args._amount),
+      _queryData: event.args._queryData,
+      _tipper: event.args._tipper,
+      _startTime: Math.floor(Date.now() / 1000),
+      txnHash: event.transactionHash,
+      __typename: "TipAddedEntity",
+    };
 
     saveTipAddedEventData(eventData);
   });
@@ -158,62 +157,66 @@ app.get("/tip-added", (req, res) => {
 
 app.post("/webhook/tip-added", (req, res) => {
   try {
-  const { _queryData, _tipper } = web3.eth.abi.decodeParameters(
-    ["bytes _queryData", "address _tipper"],
-    req.body.logs[0].data
-  );
+    const { _queryData, _tipper } = web3.eth.abi.decodeParameters(
+      ["bytes _queryData", "address _tipper"],
+      req.body.logs[0].data
+    );
 
-  const event = {
-    id: req.body.logs[0].transactionHash,
-    _queryId: req.body.logs[0].topic1,
-    _amount: Number(req.body.logs[0].topic2),
-    _queryData,
-    _tipper,
-    _startTime: req.body.block.timestamp,
-    txnHash: req.body.logs[0].transactionHash,
-    __typename: "TipAddedEntity",
-  };
+    const event = {
+      id: req.body.logs[0].transactionHash,
+      _queryId: req.body.logs[0].topic1,
+      _amount: Number(req.body.logs[0].topic2),
+      _queryData,
+      _tipper,
+      _startTime: req.body.block.timestamp,
+      txnHash: req.body.logs[0].transactionHash,
+      __typename: "TipAddedEntity",
+    };
 
-  console.log(event);
+    console.log(event);
 
-  saveTipAddedEventData(event);
+    saveTipAddedEventData(event);
 
-  res.json({ event });
+    res.json({ event });
   } catch (e) {
-  console.log(e);
-  res.json({});
-}
+    console.log(e);
+    res.json({});
+  }
 });
 
 app.post("/webhook/new-report", (req, res) => {
   try {
-  const { _value, _nonce, _queryData } = web3.eth.abi.decodeParameters(
-    ["bytes _value", "uint256 _nonce", "bytes _queryData"],
-    req.body.logs[0].data
-  );
+    const { _value, _nonce, _queryData } = web3.eth.abi.decodeParameters(
+      ["bytes _value", "uint256 _nonce", "bytes _queryData"],
+      req.body.logs[0].data
+    );
 
-  const event = {
-    id: req.body.logs[0].transactionHash,
-    _queryId: req.body.logs[0].topic1,
-    _time: Number(req.body.logs[0].topic2),
-    _value,
-    _blockNumber: Number(req.body.block.number),
-    _nonce: Number(_nonce),
-    _queryData,
-    _reporter: req.body.logs[0].topic3,
-    txnHash: req.body.logs[0].transactionHash,
-    __typename: "NewReportEntity",
-  };
+    const _reporter = ethers.utils.isAddress(req.body.logs[0].topic3)
+      ? req.body.logs[0].topic3
+      : web3.eth.abi.decodeParameter("address", req.body.logs[0].topic3);
 
-  console.log(event);
+    const event = {
+      id: req.body.logs[0].transactionHash,
+      _queryId: req.body.logs[0].topic1,
+      _time: Number(req.body.logs[0].topic2),
+      _value,
+      _blockNumber: Number(req.body.block.number),
+      _nonce: Number(_nonce),
+      _queryData,
+      _reporter,
+      txnHash: req.body.logs[0].transactionHash,
+      __typename: "NewReportEntity",
+    };
 
-  saveNewReportEventData(event);
+    console.log(event);
 
-  res.json({ event });
-} catch (e) {
-  console.log(e);
-  res.json({});
-}
+    saveNewReportEventData(event);
+
+    res.json({ event });
+  } catch (e) {
+    console.log(e);
+    res.json({});
+  }
 });
 
 const PORT = process.env.PORT || 3001;
