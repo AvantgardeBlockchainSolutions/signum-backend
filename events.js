@@ -14,8 +14,8 @@ const flexABI = JSON.parse(fs.readFileSync("abi/SignumFlexABI.json", "utf8"));
 const autopayABI = JSON.parse(fs.readFileSync("abi/AutopayABI.json", "utf8"));
 
 // Replace with your contract's address
-const flexContractAddress = "0x09D07923EA339A2aDe40f44BCEE74b2A88a99a54";
-const autopayContractAddress = "0x48C7A06cb36F6f0d575e083A4e844Ba08890e452";
+const flexContractAddress = "0x25baEbFAc231836bd5AFd1F211f6E8306f2BCC1e";
+const autopayContractAddress = "0x5CBcA25A8CD90d7b80Ba40a67E40E4D027738743";
 
 // Initialize the contract
 const flexContract = new ethers.Contract(
