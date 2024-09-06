@@ -1,4 +1,5 @@
 const { ethers } = require("ethers");
+const { BigNumber } = require('ethers');
 const fs = require("fs");
 const express = require("express");
 const cors = require("cors");
@@ -110,10 +111,11 @@ async function fetchHistoricalEvents(fromBlock, toBlock) {
   );
 
   tipEvents.forEach((event) => {
+const amountBigNumber = BigNumber.from(event.args._amount);
     const eventData = {
       id: event.transactionHash,
       _queryId: event.args._queryId,
-      _amount: Number(event.args._amount),
+      _amount: amountBigNumber.toString(),
       _queryData: event.args._queryData,
       _tipper: event.args._tipper,
       _startTime: Math.floor(Date.now() / 1000),
@@ -126,7 +128,7 @@ async function fetchHistoricalEvents(fromBlock, toBlock) {
 }
 
 // Fetch historical events (adjust the block range as needed)
-const startBlock = 21049876; // Replace with the block number you want to start from
+const startBlock = 21238759; // Replace with the block number you want to start from
 const endBlock = "latest"; // You can replace 'latest' with a specific block number if needed
 fetchHistoricalEvents(startBlock, endBlock);
 
